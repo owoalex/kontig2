@@ -3,6 +3,7 @@
 #include <cstring>
 #include <stdio.h>
 #include "CLI.h"
+#include "FASTQReader.h"
 #include <iostream>
 
 char* Translators::CLI::extract_file_extension(char* filename) {
@@ -89,7 +90,7 @@ Translators::CLI::CLI(int argc, char** argv) {
         std::cout << "  -o, --output\n";
         std::cout << "  Specify an output file\n";
         std::cout << "\n";
-        std::cout << "Full documentation <https://kontig.alexbaldwin.dev/docs>\n";
+        std::cout << "Full documentation <https://kontig.alexbaldwin.dev/docs/convert>\n";
         exit(0);
     }
     
@@ -132,6 +133,18 @@ Translators::CLI::CLI(int argc, char** argv) {
                     std::cout << "FASTA --> NSF\n";
                     exit(0);
                     break;
+                default:
+                    break;
+            }
+            break;
+        case FASTQ:
+            switch (outputFileType) {
+                case NSF: {
+                    Translators::FASTQReader* ifr = new Translators::FASTQReader(inputFile);
+                    ifr->toNSF(outputFile);
+                    exit(0);
+                    break;
+                }
                 default:
                     break;
             }
