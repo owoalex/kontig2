@@ -49,16 +49,24 @@ int main(int argc, char** argv) {
             kontig_mode = 1;
             continue;
         }
-        if (strcmp(arg,"analyse") == 0) {
+        if (strcmp(arg,"generate") == 0) {
             kontig_mode = 2;
             continue;
         }
-        if (strcmp(arg,"split") == 0) {
+        if (strcmp(arg,"gen") == 0) {
+            kontig_mode = 2;
+            continue;
+        }
+        if (strcmp(arg,"assemble") == 0) {
             kontig_mode = 3;
             continue;
         }
-        if (strcmp(arg,"join") == 0) {
+        if (strcmp(arg,"split") == 0) {
             kontig_mode = 5;
+            continue;
+        }
+        if (strcmp(arg,"join") == 0) {
+            kontig_mode = 6;
             continue;
         }
         if (strcmp(arg,"work") == 0) {
@@ -89,6 +97,24 @@ int main(int argc, char** argv) {
     switch (kontig_mode) {
         case 1:
             new Translators::CLI(argc, argv);
+            break;
+        case 2:
+            std::cout << "Generate [TODO]\n";
+            break;
+        case 3:
+            std::cout << "Assemble [TODO]\n";
+            break;
+        case 5:
+            std::cout << "Split [TODO]\n";
+            break;
+        case 6:
+            std::cout << "Join [TODO]\n";
+            break;
+        case 7:
+            std::cout << "Worker [TODO]\n";
+            break;
+        case 8:
+            std::cout << "Controller [TODO]\n";
             break;
         default:
             std::cout << "Usage: kontig <mode> [options and flags]\n";
