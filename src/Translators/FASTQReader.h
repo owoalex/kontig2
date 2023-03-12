@@ -10,8 +10,8 @@ namespace Translators {
         std::ifstream* inputStream;
         
     public:
-        FASTQReader(char* filename);
-        void toNSF(char* filename);
+        FASTQReader(std::ifstream* inputStream);
+        void toNSF(std::ofstream* outputStream);
     };
 }
 
