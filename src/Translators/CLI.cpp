@@ -140,8 +140,8 @@ Translators::CLI::CLI(int argc, char** argv) {
         case FASTQ:
             switch (outputFileType) {
                 case NSF: {
-                    Translators::FASTQReader* ifr = new Translators::FASTQReader(new std::ifstream(inputFile));
-                    ifr->toNSF(new std::ofstream(outputFile));
+                    Translators::FASTQReader* ifr = new Translators::FASTQReader(new std::ifstream(inputFile, std::ios_base::binary));
+                    ifr->toNSF(new std::ofstream(outputFile, std::ios_base::binary));
                     exit(0);
                     break;
                 }

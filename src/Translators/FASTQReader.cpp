@@ -26,7 +26,7 @@ void Translators::FASTQReader::toNSF(std::ofstream* outputStream) {
     int skipCount = 0;
     
     do {
-        currentOffset = this->inputStream->tellg();
+        //currentOffset = this->inputStream->tellg();
         charsRead = 1024;
         if ((currentOffset + charsRead) >= totalFileSize) {
             charsRead = totalFileSize - currentOffset;
@@ -34,26 +34,32 @@ void Translators::FASTQReader::toNSF(std::ofstream* outputStream) {
         this->inputStream->read(inputBuffer, charsRead);
         charsRead = this->inputStream->gcount();
         
+        std::cout << "READ #" << charsRead << "\n";
+        
         if (skipCount < charsRead) {
-            for (int i = skipCount; i < charsRead; i++) {
+            std::cout << "START " << skipCount << "\n";
+            int tmpSkipCount = skipCount;
+            skipCount = 0;
+            for (int i = tmpSkipCount; i < charsRead; i++) {
                 if (inputBuffer[i] == '\0') {
                     break;
                 }
                 switch (state) {
                     case 3: {
                         if (inputBuffer[i] == '\n') {
-                            if (inputBuffer[i + 1] == '\r') {
-                                i++;
-                            }
                             scaffoldQualityDataOffsets.push_back(currentOffset + i + 1);
-                            state = 0;
+                            std::cout << "Qual @" << currentOffset + i + 1 << "\n";
+                            state = -1;
                             skipCount = currentScaffoldLength;
-                            if (skipCount < (charsRead - i)) {
-                                i = charsRead;
+                            std::cout << "SKPTO " << currentOffset + i + 1 + skipCount << " ";
+                            if (skipCount > (charsRead - i)) {
                                 skipCount -= (charsRead - i);
+                                i = charsRead;
+                                std::cout << "NEXT\n";
                             } else {
-                                i += skipCount;
+                                i += skipCount - 1; // -1 to account for the inhernet skip forward in the loop
                                 skipCount = 0;
+                                std::cout << "MID\n";
                             }
                         }
                         break;
@@ -62,6 +68,7 @@ void Translators::FASTQReader::toNSF(std::ofstream* outputStream) {
                         if (inputBuffer[i] == '+') {
                             state = 3;
                             scaffoldGenomicDataLengths.push_back(currentScaffoldLength);
+                            std::cout << "Len  #" << currentScaffoldLength << "\n";
                             scaffoldGenomicDataNucleotides.push_back(currentScaffoldNucleotides);
                         } else if (((inputBuffer[i] >= 'a') && (inputBuffer[i] <= 'z')) || ((inputBuffer[i] >= 'A') && (inputBuffer[i] <= 'Z')) || (inputBuffer[i] == '-') || ((inputBuffer[i] >= '0') && (inputBuffer[i] <= '9'))) {
                             currentScaffoldNucleotides++;
@@ -73,10 +80,8 @@ void Translators::FASTQReader::toNSF(std::ofstream* outputStream) {
                     }
                     case 1: {
                         if (inputBuffer[i] == '\n') {
-                            if (inputBuffer[i + 1] == '\r') {
-                                i++;
-                            }
                             scaffoldGenomicDataOffsets.push_back(currentOffset + i + 1);
+                            std::cout << "Gnom @" << currentOffset + i + 1 << "\n";
                             state = 2;
                         }
                         break;
@@ -84,6 +89,7 @@ void Translators::FASTQReader::toNSF(std::ofstream* outputStream) {
                     case 0: {
                         if (inputBuffer[i] == '@') {
                             scaffoldOffsets.push_back(currentOffset + i);
+                            std::cout << "Scaf @" << currentOffset + i << "\n";
                             scaffoldNameOffsets.push_back(currentOffset + i + 1);
                             currentScaffoldLength = 0;
                             currentScaffoldNucleotides = 0;
@@ -91,12 +97,20 @@ void Translators::FASTQReader::toNSF(std::ofstream* outputStream) {
                         }
                         break;
                     }
+                    default: {
+                        state = 0;
+                        break;
+                    }
+                    
                 }
             }
+        } else {
+            skipCount -= charsRead;
         }
-        
-        skipCount -= charsRead;
-        //currentOffset += charsRead;
+        currentOffset += charsRead;
+        if (scaffoldOffsets.size() > 8) {
+            charsRead = 0;
+        }
     } while (charsRead == 1024);
     
     char* outputBlock = (char*) malloc(sizeof(char) * 1024);
@@ -120,6 +134,11 @@ void Translators::FASTQReader::toNSF(std::ofstream* outputStream) {
         std::string str = std::to_string(t);
         const char* cstr = str.c_str();
         std::cout << "Starting from " << cstr << "\n";
+        
+        t = scaffoldGenomicDataLengths[i];
+        str = std::to_string(t);
+        cstr = str.c_str();
+        std::cout << "Length " << cstr << "\n";
         
         while (leftToRead > 0) {
             int inputBlockSize = leftToRead;
