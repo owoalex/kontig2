@@ -259,6 +259,7 @@ void Translators::FASTQReader::toNSF(std::ofstream* outputStream) {
              *                0100 on ATCG can be read as a "U" for a RNA scaffold
              * 
              *           All zeroes == end of scaffold
+             */
             
             
             leftToWrite -= currentOutputBlockPosition;
