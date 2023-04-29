@@ -122,6 +122,10 @@ void Translators::FASTQReader::toNSF(std::ofstream* outputStream) {
     //std::string str = std::to_string(t);
     //const char* cstr = str.c_str();
     
+    const char magicNumber[4] = {0x62, 0x6e, 0x61, 0x00};
+    outputStream->seekp(0);
+    outputStream->write(magicNumber, 4);
+    
     for (std::vector<uint64_t>::size_type i = 0; i < scaffoldOffsets.size(); i++) {
         int leftToRead = scaffoldGenomicDataLengths[i];
         int leftToWrite = scaffoldGenomicDataNucleotides[i];
@@ -152,31 +156,111 @@ void Translators::FASTQReader::toNSF(std::ofstream* outputStream) {
                     switch (inputBuffer[j]) {
                         case 'A':
                         case 'a':
-                            outputBlock[currentOutputBlockPosition] = 'A';
-                            currentOutputBlockPosition++;
-                            break;
-                        case 'C':
-                        case 'c':
-                            outputBlock[currentOutputBlockPosition] = 'C';
+                            outputBlock[currentOutputBlockPosition] = 0b10000000;
                             currentOutputBlockPosition++;
                             break;
                         case 'T':
                         case 't':
-                            outputBlock[currentOutputBlockPosition] = 'T';
+                            outputBlock[currentOutputBlockPosition] = 0b01000000;
+                            currentOutputBlockPosition++;
+                            break;
+                        case 'U':
+                        case 'u':
+                            outputBlock[currentOutputBlockPosition] = 0b01000001;
+                            currentOutputBlockPosition++;
+                            break;
+                        case 'C':
+                        case 'c':
+                            outputBlock[currentOutputBlockPosition] = 0b00100000;
                             currentOutputBlockPosition++;
                             break;
                         case 'G':
                         case 'g':
-                            outputBlock[currentOutputBlockPosition] = 'G';
+                            outputBlock[currentOutputBlockPosition] = 0b00010000;
                             currentOutputBlockPosition++;
                             break;
+                        case 'N':
+                        case 'n':
+                            outputBlock[currentOutputBlockPosition] = 0b00000001;
+                            currentOutputBlockPosition++;
+                            break;
+                        case '-':
+                            outputBlock[currentOutputBlockPosition] = 0b00000011;
+                            currentOutputBlockPosition++;
+                            break;
+                        case 'R':
+                        case 'r':
+                            outputBlock[currentOutputBlockPosition] = 0b10010000;
+                            currentOutputBlockPosition++;
+                            break;
+                        case 'Y':
+                        case 'y':
+                            outputBlock[currentOutputBlockPosition] = 0b01100000;
+                            currentOutputBlockPosition++;
+                            break;
+                        case 'K':
+                        case 'k':
+                            outputBlock[currentOutputBlockPosition] = 0b01010000;
+                            currentOutputBlockPosition++;
+                            break;
+                        case 'M':
+                        case 'm':
+                            outputBlock[currentOutputBlockPosition] = 0b10100000;
+                            currentOutputBlockPosition++;
+                            break;
+                        case 'S':
+                        case 's':
+                            outputBlock[currentOutputBlockPosition] = 0b00110000;
+                            currentOutputBlockPosition++;
+                            break;
+                        case 'W':
+                        case 'w':
+                            outputBlock[currentOutputBlockPosition] = 0b11000000;
+                            currentOutputBlockPosition++;
+                            break;
+                        case 'B':
+                        case 'b':
+                            outputBlock[currentOutputBlockPosition] = 0b01110000;
+                            currentOutputBlockPosition++;
+                            break;
+                        case 'D':
+                        case 'd':
+                            outputBlock[currentOutputBlockPosition] = 0b11010000;
+                            currentOutputBlockPosition++;
+                            break;
+                        case 'H':
+                        case 'h':
+                            outputBlock[currentOutputBlockPosition] = 0b11100000;
+                            currentOutputBlockPosition++;
+                            break;
+                        case 'V':
+                        case 'v':
+                            outputBlock[currentOutputBlockPosition] = 0b10110000;
+                            currentOutputBlockPosition++;
+                            break;
+                        case 'i':
+                        case 'I':
+                            outputBlock[currentOutputBlockPosition] = 0b11100001;
+                            currentOutputBlockPosition++; // NOTE: Non-standard, more testing to be done on how this affects quality of assembled contigs
+                            break;
                         default:
-                            outputBlock[currentOutputBlockPosition] = '!';
+                            outputBlock[currentOutputBlockPosition] = 0b00000000;
                             currentOutputBlockPosition++;
                             break;
                     }
                 }
             }
+            /*
+             * ATCG---A
+             * ^^^^      Standard 4 bases
+             *       ^   Unknown length, commonly paired with 0000 on ATCG
+             *        ^  Alternate interpretation
+             *           e.g. 0000 on ATCG can be read as an "N"
+             *                0100 on ATCG can be read as a "U" for a RNA scaffold
+             * 
+             *           All zeroes == end of scaffold
+             */
+            
             
             leftToWrite -= currentOutputBlockPosition;
             if (currentOutputBlockPosition < 1024) {

@@ -34,6 +34,9 @@ Translators::FileType Translators::CLI::file_extension_to_filetype(char* ext) {
     if (strcmp(ext,"gzip") == 0) { return FileType::GZ; }
     if (strcmp(ext,"fa") == 0) { return FileType::FASTA; }
     if (strcmp(ext,"fna") == 0) { return FileType::FASTA; }
+    if (strcmp(ext,"ffn") == 0) { return FileType::FASTA; }
+    if (strcmp(ext,"faa") == 0) { return FileType::FASTA; }
+    if (strcmp(ext,"frn") == 0) { return FileType::FASTA; }
     if (strcmp(ext,"fasta") == 0) { return FileType::FASTA; }
     if (strcmp(ext,"fq") == 0) { return FileType::FASTQ; }
     if (strcmp(ext,"fastq") == 0) { return FileType::FASTQ; }
