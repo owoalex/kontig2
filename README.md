@@ -28,6 +28,6 @@ https://github.com/pfaucon/PBSIM-PacBio-Simulator
 
 Settings used for generating simulated reads:
 ```
-pbsim --data-type CLR --depth 20 --model_qc ../PBSIM-PacBio-Simulator/data/model_qc_clr samples/lactobacillus-reference-genome.fa
-iss generate --genomes samples/lactobacillus-reference-genome.fa -n 2m --model miseq --output samples/illumina/miseq
+pbsim --data-type CLR --depth 20 --model_qc ../PBSIM-PacBio-Simulator/data/model_qc_clr reference-genomes/lactobacillus-reference-genome.fa
+iss generate --genomes reference-genomes/lactobacillus-reference-genome.fa -n 2m --model miseq --output samples/illumina/miseq
 ```
