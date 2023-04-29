@@ -33,10 +33,10 @@ Translators::FileType Translators::CLI::file_extension_to_filetype(char* ext) {
     if (strcmp(ext,"gz") == 0) { return FileType::GZ; }
     if (strcmp(ext,"gzip") == 0) { return FileType::GZ; }
     if (strcmp(ext,"fa") == 0) { return FileType::FASTA; }
+    if (strcmp(ext,"fna") == 0) { return FileType::FASTA; }
     if (strcmp(ext,"fasta") == 0) { return FileType::FASTA; }
     if (strcmp(ext,"fq") == 0) { return FileType::FASTQ; }
     if (strcmp(ext,"fastq") == 0) { return FileType::FASTQ; }
-    if (strcmp(ext,"nsf") == 0) { return FileType::NSF; }
     if (strcmp(ext,"nsf") == 0) { return FileType::NSF; }
     return FileType::Unknown;
 }
