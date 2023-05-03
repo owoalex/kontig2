@@ -3,11 +3,10 @@
 #include <cstring>
 #include <stdio.h>
 #include "CLI.h"
-#include "FASTQReader.h"
 #include "../Utils/TypeDetector.h"
 #include <iostream>
 
-Translators::CLI::CLI(int argc, char** argv) {
+Generators::CLI::CLI(int argc, char** argv) {
     char* inputFile = NULL;
     char* outputFile = NULL;
     bool helpNeeded = false;
@@ -66,19 +65,6 @@ Translators::CLI::CLI(int argc, char** argv) {
 
     //std::cout << inputFile << " --> " << outputFile << "\n";
     
-    std::ifstream* inputStream = new std::ifstream(inputFile, std::ios_base::binary);
-    std::ofstream* outputStream = new std::ofstream(outputFile, std::ios_base::binary);
-    
-    if (inputStream->fail()) {
-        std::cout << "Couldn't read from " << inputFile << "\n";
-        exit(1);
-    }
-    
-    if (outputStream->fail()) {
-        std::cout << "Couldn't write to " << outputFile << "\n";
-        exit(1);
-    }
-    
     switch (outputFileType) {
         case Utils::FileType::Unknown:
             std::cout << "Couldn't determine the file type of " << outputFile << "\n";
@@ -107,30 +93,10 @@ Translators::CLI::CLI(int argc, char** argv) {
             exit(1);
             break;
         case Utils::FileType::FASTA:
-            switch (outputFileType) {
-                case Utils::FileType::NSF:
-                    std::cout << "FASTA --> NSF\n";
-                    exit(0);
-                    break;
-                default:
-                    break;
-            }
-            break;
-        case Utils::FileType::FASTQ:
-            switch (outputFileType) {
-                case Utils::FileType::NSF: {
-                    Translators::FASTQReader* ifr = new Translators::FASTQReader(inputStream);
-                    ifr->toNSF(outputStream);
-                    exit(0);
-                    break;
-                }
-                default:
-                    break;
-            }
+            std::cout << "FASTA --> NSF\n";
+            exit(0);
             break;
         default:
             break;
     }
-    std::cout << "No method to translate " << Utils::TypeDetector::extract_file_extension(inputFile) << " to " << Utils::TypeDetector::extract_file_extension(outputFile) << "\n";
-    exit(1);
 }

@@ -1,7 +1,7 @@
-#ifndef TRANSLATORS_FILE_TYPE_H
-#define TRANSLATORS_FILE_TYPE_H
+#ifndef UTILS_FILE_TYPE_H
+#define UTILS_FILE_TYPE_H
 
-namespace Translators {
+namespace Utils {
     enum FileType {
         Unknown = 0,
         GZ,
