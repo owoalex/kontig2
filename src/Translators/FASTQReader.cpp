@@ -112,7 +112,7 @@ void Translators::FASTQReader::toNSF(std::ofstream* outputStream) {
     
     char* outputBlock = (char*) malloc(sizeof(char) * 1024);
     
-    int headerTail = 128;
+    int headerTail = 64;
     const int INDEX_ENTRY_SIZE = 64;
     int nucleotideStreamOffset = headerTail + (scaffoldOffsets.size() * INDEX_ENTRY_SIZE);
     int nucleotideStreamTail = nucleotideStreamOffset;
@@ -125,10 +125,21 @@ void Translators::FASTQReader::toNSF(std::ofstream* outputStream) {
     const char magicNumber[4] = {0x62, 0x6e, 0x61, 0x00};
     outputStream->seekp(0);
     outputStream->write(magicNumber, 4);
+    outputStream->seekp(4);
+    uint64_t entries = scaffoldOffsets.size();
+    outputStream->write(reinterpret_cast<const char *>(&entries), sizeof(entries));
     
     for (std::vector<uint64_t>::size_type i = 0; i < scaffoldOffsets.size(); i++) {
         int leftToRead = scaffoldGenomicDataLengths[i];
         int leftToWrite = scaffoldGenomicDataNucleotides[i];
+        
+        outputStream->seekp(headerTail + (i * INDEX_ENTRY_SIZE) + 0);
+        uint64_t dataPosition = nucleotideStreamTail;
+        outputStream->write(reinterpret_cast<const char *>(&dataPosition), sizeof(dataPosition));
+        outputStream->seekp(headerTail + (i * INDEX_ENTRY_SIZE) + 4);
+        uint64_t dataSize = scaffoldGenomicDataNucleotides[i];
+        outputStream->write(reinterpret_cast<const char *>(&dataSize), sizeof(dataSize));
+        
         this->inputStream->seekg(scaffoldGenomicDataOffsets[i]);
         
         //t = scaffoldGenomicDataOffsets[i];

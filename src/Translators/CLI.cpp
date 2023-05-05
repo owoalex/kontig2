@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include "CLI.h"
 #include "FASTQReader.h"
+#include "../Abstractions/NSF.h"
 #include "../Utils/TypeDetector.h"
 #include <iostream>
 
@@ -121,6 +122,18 @@ Translators::CLI::CLI(int argc, char** argv) {
                 case Utils::FileType::NSF: {
                     Translators::FASTQReader* ifr = new Translators::FASTQReader(inputStream);
                     ifr->toNSF(outputStream);
+                    exit(0);
+                    break;
+                }
+                default:
+                    break;
+            }
+            break;
+        case Utils::FileType::NSF:
+            switch (outputFileType) {
+                case Utils::FileType::FASTA: {
+                    Abstractions::NSF* nsf = new Abstractions::NSF(inputFile);
+                    nsf->toFASTA(outputStream);
                     exit(0);
                     break;
                 }

@@ -1,6 +1,6 @@
 # Kontig
 
-Kontig is a complete pipeline for de-novo hybrid genome assembly. It supports both short read and long read sequencers, and a combination of the two. Kontig is primarily designed for metagenomic samples, with a unique ability to produce gene graphs, from which hypothetical genomes can be extracted. Despite this, Kontig's distributed computing features can provide a useful tool for single organism sequencing with large datasets.
+Kontig is a complete pipeline for de-novo hybrid genome assembly. It supports both short read and long read sequencers, and a combination of the two. Kontig was originally designed for metagenomic samples, with an ability to produce gene graphs, from which hypothetical genomes can be extracted. 
 
 ## Usage
 
@@ -9,12 +9,15 @@ Convert FASTQ files into Kontig's native NSF (Nucleotide Scratch File) format.
 
 ```kontig generate kmers -i test-output/input.nsf -o test-output/table0.klt```\
 Build a sorted K-Mer table from the generated scratch file.
+(NOT WORKING)
 
 ```kontig assemble --kmers test-output/table0.klt --contigs test-output/contigs0.nsf --graph test-output/connections0.cgc```\
 Assemble contigs using the generated K-Mer table. Divergent connections will be logged in the graph file.
+(NOT WORKING)
 
 ```kontig convert -i test-output/contigs0.nsf -o test-output/output.fa```\
 Convert contigs from the assembly into a FASTA file for use with other bioinformatics tools.
+(NOT WORKING)
 
 ## References
 
