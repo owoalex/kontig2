@@ -3,7 +3,6 @@
 #include <cstring>
 #include <stdio.h>
 #include "FASTQReader.h"
-#include "FASTQReader.h"
 #include <vector>
 
 void Translators::FASTQReader::toNSF(std::ofstream* outputStream) {

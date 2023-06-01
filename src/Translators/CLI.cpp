@@ -106,6 +106,17 @@ Translators::CLI::CLI(int argc, char** argv) {
             std::cout << "Kontig does not natively support gzipped files\n";
             exit(1);
             break;
+        case Utils::FileType::NSF:
+            switch (outputFileType) {
+                case Utils::FileType::FASTA: {
+                    std::cout << "NSF --> FASTA\n";
+                    exit(0);
+                    break;
+                }
+                default:
+                    break;
+            }
+            break;
         case Utils::FileType::FASTA:
             switch (outputFileType) {
                 case Utils::FileType::NSF:
