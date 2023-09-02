@@ -11,11 +11,14 @@ namespace Abstractions {
         std::fstream* fileStream;
         
     public:
+        const char MAGIC_NUMBER[4] = {0x62, 0x6e, 0x61, 0x00};
+        const int HEADER_SIZE = 64;
+        const int INDEX_ENTRY_SIZE = 64;
         NSF(char* filePath);
-        int getStreams();
-        int getEntries();
+        uint64_t entryCount(int streamId);
         uint64_t dataLength(int streamId, int entryId);
-        char* rawData(int streamId, int entryId);
+        uint8_t streamCount();
+        char* rawDataPointer(int streamId, int entryId);
         void toFASTA(std::ofstream* outputStream);
     };
 }

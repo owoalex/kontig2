@@ -111,9 +111,9 @@ void Translators::FASTQReader::toNSF(std::ofstream* outputStream) {
     
     char* outputBlock = (char*) malloc(sizeof(char) * 1024);
     
-    int headerTail = 64;
+    const int HEADER_SIZE = 64;
     const int INDEX_ENTRY_SIZE = 64;
-    int nucleotideStreamOffset = headerTail + (scaffoldOffsets.size() * INDEX_ENTRY_SIZE);
+    int nucleotideStreamOffset = HEADER_SIZE + (scaffoldOffsets.size() * INDEX_ENTRY_SIZE);
     int nucleotideStreamTail = nucleotideStreamOffset;
     
     this->inputStream->seekg(0, std::ios_base::beg);
@@ -125,17 +125,23 @@ void Translators::FASTQReader::toNSF(std::ofstream* outputStream) {
     outputStream->seekp(0);
     outputStream->write(magicNumber, 4);
     outputStream->seekp(4);
-    uint64_t entries = scaffoldOffsets.size();
-    outputStream->write(reinterpret_cast<const char *>(&entries), sizeof(entries));
+    uint8_t streamCount = 2;
+    outputStream->write(reinterpret_cast<const char *>(&streamCount), sizeof(streamCount));
+    
+    for (uint8_t i = 0; i < streamCount; i++) {
+        outputStream->seekp(HEADER_SIZE + (i * INDEX_ENTRY_SIZE) + 0);
+        uint64_t entries = scaffoldOffsets.size();
+        outputStream->write(reinterpret_cast<const char*>(&entries), sizeof(entries));
+    }
     
     for (std::vector<uint64_t>::size_type i = 0; i < scaffoldOffsets.size(); i++) {
         int leftToRead = scaffoldGenomicDataLengths[i];
         int leftToWrite = scaffoldGenomicDataNucleotides[i];
         
-        outputStream->seekp(headerTail + (i * INDEX_ENTRY_SIZE) + 0);
+        outputStream->seekp(HEADER_SIZE + (i * INDEX_ENTRY_SIZE) + 4);
         uint64_t dataPosition = nucleotideStreamTail;
         outputStream->write(reinterpret_cast<const char *>(&dataPosition), sizeof(dataPosition));
-        outputStream->seekp(headerTail + (i * INDEX_ENTRY_SIZE) + 4);
+        outputStream->seekp(HEADER_SIZE + (i * INDEX_ENTRY_SIZE) + 8);
         uint64_t dataSize = scaffoldGenomicDataNucleotides[i];
         outputStream->write(reinterpret_cast<const char *>(&dataSize), sizeof(dataSize));
         
