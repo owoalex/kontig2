@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdlib.h>
+#include <bit>
 #include <cstring>
 #include <stdio.h>
 #include "FASTQReader.h"
@@ -111,39 +112,81 @@ void Translators::FASTQReader::toNSF(std::ofstream* outputStream) {
     
     char* outputBlock = (char*) malloc(sizeof(char) * 1024);
     
-    const int HEADER_SIZE = 64;
-    const int INDEX_ENTRY_SIZE = 64;
-    int nucleotideStreamOffset = HEADER_SIZE + (scaffoldOffsets.size() * INDEX_ENTRY_SIZE);
-    int nucleotideStreamTail = nucleotideStreamOffset;
+    const uint64_t STREAM_COUNT = 3;
+    uint64_t entryCount = scaffoldOffsets.size();
+    const uint8_t HEADER_SIZE = 64;
+    const uint8_t STREAM_HEADER_SIZE = 64;
+    const uint8_t NUCLEOTIDE_INDEX_ENTRY_SIZE = 32;
+    const uint8_t QUALITY_INDEX_ENTRY_SIZE = 32;
+    const uint8_t TAG_INDEX_ENTRY_SIZE = 32;
+    const uint64_t INDEX_ENTRY_SIZE_ALL_STREAMS = NUCLEOTIDE_INDEX_ENTRY_SIZE + QUALITY_INDEX_ENTRY_SIZE + TAG_INDEX_ENTRY_SIZE;
+    uint64_t streamOffset = HEADER_SIZE + (STREAM_HEADER_SIZE * STREAM_COUNT) + (scaffoldOffsets.size() * INDEX_ENTRY_SIZE_ALL_STREAMS);
+    uint64_t streamTail = streamOffset;
     
     this->inputStream->seekg(0, std::ios_base::beg);
     //int t = this->inputStream->tellg();
     //std::string str = std::to_string(t);
     //const char* cstr = str.c_str();
     
+    // INFORMATION ABOUT THE WHOLE FILE (64 bytes)
     const char magicNumber[4] = {0x62, 0x6e, 0x61, 0x00};
     outputStream->seekp(0);
     outputStream->write(magicNumber, 4);
     outputStream->seekp(4);
-    uint8_t streamCount = 2;
-    outputStream->write(reinterpret_cast<const char *>(&streamCount), sizeof(streamCount));
+    outputStream->write(reinterpret_cast<const char *>(&STREAM_COUNT), sizeof(STREAM_COUNT));
+    // INFORMATION ABOUT THE WHOLE FILE
     
-    for (uint8_t i = 0; i < streamCount; i++) {
-        outputStream->seekp(HEADER_SIZE + (i * INDEX_ENTRY_SIZE) + 0);
-        uint64_t entries = scaffoldOffsets.size();
-        outputStream->write(reinterpret_cast<const char*>(&entries), sizeof(entries));
+    // INFORMATION ABOUT FIRST STREAM (64 bytes)
+    int streamIndexOffset = HEADER_SIZE + (STREAM_HEADER_SIZE * STREAM_COUNT);
+    outputStream->seekp(HEADER_SIZE + (0 * STREAM_HEADER_SIZE) + 0);
+    uint64_t value = streamIndexOffset;
+    if constexpr(std::endian::native != std::endian::little) {
+        value = std::byteswap(value);
     }
+    outputStream->write(reinterpret_cast<const char*>(&value), sizeof(value));
+    // Write where the stream index starts
+    
+    outputStream->seekp(HEADER_SIZE + (0 * STREAM_HEADER_SIZE) + 8);
+    value = entryCount;
+    if constexpr(std::endian::native != std::endian::little) {
+        value = std::byteswap(value);
+    }
+    outputStream->write(reinterpret_cast<const char*>(&value), sizeof(value));
+    // How long is the stream index (how many indicies)
+    
+    uint8_t smallValue = 8;
+    outputStream->seekp(HEADER_SIZE + (0 * STREAM_HEADER_SIZE) + 16);
+    outputStream->write(reinterpret_cast<const char*>(&smallValue), sizeof(smallValue));
+    // What type of stream is this
+    // 8 = Nucleotide data
+    // 7 = Quality data
+    
+    smallValue = NUCLEOTIDE_INDEX_ENTRY_SIZE;
+    outputStream->seekp(HEADER_SIZE + (0 * NUCLEOTIDE_INDEX_ENTRY_SIZE) + 17);
+    outputStream->write(reinterpret_cast<const char*>(&smallValue), sizeof(smallValue));
+    // How big is each index in bytes
+    // INFORMATION ABOUT FIRST STREAM
     
     for (std::vector<uint64_t>::size_type i = 0; i < scaffoldOffsets.size(); i++) {
         int leftToRead = scaffoldGenomicDataLengths[i];
         int leftToWrite = scaffoldGenomicDataNucleotides[i];
         
-        outputStream->seekp(HEADER_SIZE + (i * INDEX_ENTRY_SIZE) + 4);
-        uint64_t dataPosition = nucleotideStreamTail;
-        outputStream->write(reinterpret_cast<const char *>(&dataPosition), sizeof(dataPosition));
-        outputStream->seekp(HEADER_SIZE + (i * INDEX_ENTRY_SIZE) + 8);
+        // WRITE INDEX ENTRY FOR READ
+        outputStream->seekp(streamIndexOffset + (i * NUCLEOTIDE_INDEX_ENTRY_SIZE) + 0);
+        uint64_t dataPosition = streamTail;
+        value = dataPosition;
+        if constexpr(std::endian::native != std::endian::little) {
+            value = std::byteswap(value);
+        }
+        outputStream->write(reinterpret_cast<const char *>(&value), sizeof(value));
+        outputStream->seekp(streamIndexOffset + (i * NUCLEOTIDE_INDEX_ENTRY_SIZE) + 8);
         uint64_t dataSize = scaffoldGenomicDataNucleotides[i];
-        outputStream->write(reinterpret_cast<const char *>(&dataSize), sizeof(dataSize));
+        value = dataSize;
+        if constexpr(std::endian::native != std::endian::little) {
+            value = std::byteswap(value);
+        }
+        outputStream->write(reinterpret_cast<const char *>(&value), sizeof(value));
+        // WRITE INDEX ENTRY FOR READ
         
         this->inputStream->seekg(scaffoldGenomicDataOffsets[i]);
         
@@ -288,10 +331,10 @@ void Translators::FASTQReader::toNSF(std::ofstream* outputStream) {
             //const char* cstr = str.c_str();
             //std::cout << "Block # " << cstr << "\n";
             //std::cout << "BLOCK:[\n" << outputBlockFinal << "\n]\n";
-            outputStream->seekp(nucleotideStreamTail);
+            outputStream->seekp(streamTail);
             outputStream->write(outputBlockFinal, currentOutputBlockPosition);
             
-            nucleotideStreamTail += currentOutputBlockPosition;
+            streamTail += currentOutputBlockPosition;
             leftToRead -= inputBlockSize;
         }
         
@@ -300,7 +343,7 @@ void Translators::FASTQReader::toNSF(std::ofstream* outputStream) {
         //}
     }
     
-    int tagStreamOffset = nucleotideStreamTail;
+    int tagStreamOffset = streamTail;
     int tagStreamTail = tagStreamOffset;
     
     free(inputBuffer);

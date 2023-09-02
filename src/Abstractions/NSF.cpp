@@ -3,6 +3,7 @@
 #include <cstring>
 #include <stdio.h>
 #include <sys/stat.h>
+#include <bit>
 #include "NSF.h"
 #include <vector>
 
@@ -26,31 +27,62 @@ Abstractions::NSF::NSF(char* filePath) {
     
     if (createNew) {
         this->fileStream->write(MAGIC_NUMBER, 4);
+    } else {
+        this->streamCount = getUInt64AtOffset(4);
+        this->streamIndexOffsets = (int*) malloc(this->streamCount * sizeof(int));
+        this->streamEntryCounts = (int*) malloc(this->streamCount * sizeof(int));
+        this->streamTypes = (uint8_t*) malloc(this->streamCount * sizeof(uint8_t));
+        this->streamIndexSizes = (uint8_t*) malloc(this->streamCount * sizeof(uint8_t));
+        
+        for (int i = 0; i < this->streamCount; i++) {
+            this->streamIndexOffsets[i] = getUInt64AtOffset(HEADER_SIZE + (i * STREAM_HEADER_SIZE) + 0);
+            this->streamEntryCounts[i] = getUInt64AtOffset(HEADER_SIZE + (i * STREAM_HEADER_SIZE) + 8);
+            this->streamTypes[i] = getUInt8AtOffset(HEADER_SIZE + (i * STREAM_HEADER_SIZE) + 16);
+            this->streamIndexSizes[i] = getUInt8AtOffset(HEADER_SIZE + (i * STREAM_HEADER_SIZE) + 17);
+        }
     }
 }
 
-uint8_t Abstractions::NSF::streamCount() {
-    this->fileStream->seekp(4);
-    char count;
-    this->fileStream->read(&count, 1);
-    return count;
+uint64_t Abstractions::NSF::getUInt64AtOffset(int offset) {
+    this->fileStream->seekp(offset);
+    uint64_t value;
+    this->fileStream->read(reinterpret_cast<char*>(&value), sizeof(value));
+    if constexpr(std::endian::native != std::endian::little) {
+        value = std::byteswap(value);
+    }
+    return value;
 }
 
-uint64_t Abstractions::NSF::entryCount(int streamId) {
-    this->fileStream->seekp(HEADER_SIZE + (streamId * INDEX_ENTRY_SIZE) + 0);
-    uint64_t count;
-    this->fileStream->read(reinterpret_cast<char*>(&count), sizeof(count));
-    return count;
+uint8_t Abstractions::NSF::getUInt8AtOffset(int offset) {
+    this->fileStream->seekp(offset);
+    uint8_t value;
+    this->fileStream->read(reinterpret_cast<char*>(&value), sizeof(value));
+    return value;
+}
+
+uint8_t Abstractions::NSF::getStreamCount() {
+    return this->streamCount;
+}
+
+uint64_t Abstractions::NSF::getEntryCount(int streamId) {
+    return this->streamEntryCounts[streamId];
+}
+
+uint64_t Abstractions::NSF::dataOffset(int streamId, int entryId) {
+    return getUInt64AtOffset(this->streamIndexOffsets[streamId] + (entryId * this->streamIndexSizes[streamId]));
 }
 
 uint64_t Abstractions::NSF::dataLength(int streamId, int entryId) {
-    std::cout << "NOT IMPLEMENTED\n";
-    exit(1);
+    return getUInt64AtOffset(this->streamIndexOffsets[streamId] + (entryId * this->streamIndexSizes[streamId]) + 8);
 }
 
-char* Abstractions::NSF::rawDataPointer(int streamId, int entryId) {
-    std::cout << "NOT IMPLEMENTED\n";
-    exit(1);
+char* Abstractions::NSF::getData(int streamId, int entryId) {
+    uint64_t offset = getUInt64AtOffset(this->streamIndexOffsets[streamId] + (entryId * this->streamIndexSizes[streamId]));
+    uint64_t length = getUInt64AtOffset(this->streamIndexOffsets[streamId] + (entryId * this->streamIndexSizes[streamId]) + 8);
+    char* buffer = (char*) malloc(length);
+    this->fileStream->seekp(offset);
+    this->fileStream->read(buffer, length);
+    return buffer;
 }
 
 void Abstractions::NSF::toFASTA(std::ofstream* outputStream) {
@@ -59,9 +91,91 @@ void Abstractions::NSF::toFASTA(std::ofstream* outputStream) {
         exit(1);
     }
     
-    std::cout << (int) this->streamCount() << " streams to write\n";
-    std::cout << (int) this->entryCount(0) << " entries to write\n";
+    std::cout << (int) this->getStreamCount() << " streams to write\n";
+    std::cout << (int) this->getEntryCount(0) << " entries to write\n";
+    outputStream->seekp(0);
+    for (int i = 0; i < this->getEntryCount(0); i++) {
+        uint64_t lengthRemain = this->dataLength(0, i);
+        uint64_t offset = this->dataOffset(0, i);
+        //char* data = this->getData(0, i);
+        //std::cout << "Read " << (int) lengthRemain << "\n";
+        *outputStream << ">R" << (int) i << "\n";
+        //const char* outputBlock
+        //outputStream->write(outputBlock, currentOutputBlockPosition);
+        int lineLength = 0;
+        char* inputBuffer = (char*) malloc(80);
+        while (lengthRemain > 0) {
+            if (lengthRemain > 80) {
+                lengthRemain -= 80;
+                lineLength = 80;
+            } else {
+                lineLength = lengthRemain;
+                lengthRemain = 0;
+            }
+            this->fileStream->seekp(offset);
+            this->fileStream->read(inputBuffer, lineLength);
+            offset += lineLength;
+            for (int i = 0; i < lineLength; i++) {
+                switch ((unsigned char) inputBuffer[i]) {
+                    case 0b10000000:
+                        *outputStream << 'A';
+                        break;
+                    case 0b01000000:
+                        *outputStream << 'T';
+                        break;
+                    case 0b01000001:
+                        *outputStream << 'U';
+                        break;
+                    case 0b00100000:
+                        *outputStream << 'C';
+                        break;
+                    case 0b00010000:
+                        *outputStream << 'G';
+                        break;
+                    case 0b00000001:
+                        *outputStream << 'N';
+                        break; 
+                    case 0b10010000:
+                        *outputStream << 'R';
+                        break;
+                    case 0b01100000:
+                        *outputStream << 'Y';
+                        break;
+                    case 0b01010000:
+                        *outputStream << 'K';
+                        break;
+                    case 0b10100000:
+                        *outputStream << 'M';
+                        break;
+                    case 0b00110000:
+                        *outputStream << 'S';
+                        break;
+                    case 0b11000000:
+                        *outputStream << 'W';
+                        break;
+                    case 0b01110000:
+                        *outputStream << 'B';
+                        break;
+                    case 0b11010000:
+                        *outputStream << 'D';
+                        break;
+                    case 0b11100000:
+                        *outputStream << 'H';
+                        break;
+                    case 0b10110000:
+                        *outputStream << 'V';
+                        break;
+                    case 0b11100001:
+                        *outputStream << 'I';
+                        break;
+                    default:
+                        *outputStream << '-';
+                        break;
+                }
+            }
+            *outputStream << "\n";
+        }
+        free(inputBuffer);
+    }
     
-    std::cout << "NOT IMPLEMENTED\n";
-    exit(1);
 }
