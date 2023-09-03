@@ -162,6 +162,8 @@ void Abstractions::NSF::toFASTA(std::ofstream* outputStream) {
     std::cout << (int) this->getStreamCount() << " streams to write\n";
     std::cout << (int) this->getEntryCount(nucleotideStream) << " entries to write\n";
     outputStream->seekp(0);
+    char* inputBuffer = (char*) malloc(80);
+    char* tagInputBuffer;
     for (int i = 0; i < this->getEntryCount(nucleotideStream); i++) {
         uint64_t lengthRemain = this->dataLength(nucleotideStream, i);
         uint64_t offset = this->dataOffset(nucleotideStream, i);
@@ -170,12 +172,17 @@ void Abstractions::NSF::toFASTA(std::ofstream* outputStream) {
         if (tagStream == -1) {
             *outputStream << ">R" << (int) i << "\n";
         } else {
-            *outputStream << ">R-TODO-" << (int) i << "\n";
+            int tagLength = this->dataLength(tagStream, i);
+            tagInputBuffer = (char*) malloc(tagLength + 1);
+            this->fileStream->seekp(this->dataOffset(tagStream, i));
+            this->fileStream->read(tagInputBuffer, tagLength);
+            tagInputBuffer[tagLength] = 0;
+            *outputStream << ">" << tagInputBuffer << "\n";
+            free(tagInputBuffer);
         }
         //const char* outputBlock
         //outputStream->write(outputBlock, currentOutputBlockPosition);
         int lineLength = 0;
-        char* inputBuffer = (char*) malloc(80);
         while (lengthRemain > 0) {
             if (lengthRemain > 80) {
                 lengthRemain -= 80;
@@ -192,9 +199,10 @@ void Abstractions::NSF::toFASTA(std::ofstream* outputStream) {
             }
             *outputStream << "\n";
         }
-        free(inputBuffer);
+        
     }
-    
+    free(inputBuffer);
+    outputStream->flush();
 }
 
 void Abstractions::NSF::toFASTQ(std::ofstream* outputStream) {

@@ -14,7 +14,7 @@ if make; then
         exit
     fi
     echo ">build/kontig convert -i test-output/input.nsf -o test-output/input.fa"
-    if build/kontig convert -i test-output/input.nsf -o test-output/input.fastq; then
+    if build/kontig convert -i test-output/input.nsf -o test-output/input.fa; then
         echo "SUCCESS"
     else
         echo ""
