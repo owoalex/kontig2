@@ -33,19 +33,21 @@ Translators::CLI::CLI(int argc, char** argv) {
             helpNeeded = true;
             continue;
         }
-        std::cout << "Unknown flag " << arg << "\n\n";
+        std::cerr << "Unknown flag " << arg << "\n\n";
         helpNeeded = true;
         break;
     }
     
-    if (inputFile == NULL) {
-        std::cout << "Missing input file, please specify one with -i <file_path>\n";
-        helpNeeded = true;
-    }
-    
-    if (outputFile == NULL) {
-        std::cout << "Missing output file, please specify one with -o <file_path>\n";
-        helpNeeded = true;
+    if (!helpNeeded) {
+        if (inputFile == NULL) {
+            std::cerr << "Missing input file, please specify one with -i <file_path>\n";
+            helpNeeded = true;
+        }
+        
+        if (outputFile == NULL) {
+            std::cerr << "Missing output file, please specify one with -o <file_path>\n";
+            helpNeeded = true;
+        }
     }
     
     if (helpNeeded) {
@@ -68,43 +70,44 @@ Translators::CLI::CLI(int argc, char** argv) {
     //std::cout << inputFile << " --> " << outputFile << "\n";
     
     std::ifstream* inputStream = new std::ifstream(inputFile, std::ios_base::binary);
-    std::ofstream* outputStream = new std::ofstream(outputFile, std::ios_base::binary);
     
     if (inputStream->fail()) {
-        std::cout << "Couldn't read from " << inputFile << "\n";
+        std::cerr << "Couldn't read from " << inputFile << "\n";
         exit(1);
     }
     
+    std::ofstream* outputStream = new std::ofstream(outputFile, std::ios_base::binary);
+    
     if (outputStream->fail()) {
-        std::cout << "Couldn't write to " << outputFile << "\n";
+        std::cerr << "Couldn't write to " << outputFile << "\n";
         exit(1);
     }
     
     switch (outputFileType) {
         case Utils::FileType::Unknown:
-            std::cout << "Couldn't determine the file type of " << outputFile << "\n";
-            exit(1);
+            std::cerr << "Couldn't determine the file type of " << outputFile << "\n";
+            exit(3);
             break;
         case Utils::FileType::GZ:
-            std::cout << "Kontig does not natively support gzipped files\n";
-            exit(1);
+            std::cerr << "This version of kontig does not natively support gzipped files\n";
+            exit(2);
             break;
         default:
             break;
     }
     
     if (outputFileType == inputFileType) {
-        std::cout << "Query doesn't make sense: Desired output format appears to match the input format\n";
+        std::cerr << "Query doesn't make sense: Desired output format appears to match the input format\n";
         exit(1);
     }
     
     switch (inputFileType) {
         case Utils::FileType::Unknown:
-            std::cout << "Unknown filetype " << inputFile << "\n";
+            std::cerr << "Unknown filetype " << inputFile << "\n";
             exit(1);
             break;
         case Utils::FileType::GZ:
-            std::cout << "Kontig does not natively support gzipped files\n";
+            std::cerr << "This version of kontig does not natively support gzipped files\n";
             exit(1);
             break;
         case Utils::FileType::FASTA:
@@ -137,6 +140,12 @@ Translators::CLI::CLI(int argc, char** argv) {
                     exit(0);
                     break;
                 }
+                case Utils::FileType::FASTQ: {
+                    Abstractions::NSF* nsf = new Abstractions::NSF(inputFile);
+                    nsf->toFASTQ(outputStream);
+                    exit(0);
+                    break;
+                }
                 default:
                     break;
             }
@@ -144,6 +153,6 @@ Translators::CLI::CLI(int argc, char** argv) {
         default:
             break;
     }
-    std::cout << "No method to translate " << Utils::TypeDetector::extract_file_extension(inputFile) << " to " << Utils::TypeDetector::extract_file_extension(outputFile) << "\n";
+    std::cerr << "No method to translate " << Utils::TypeDetector::extract_file_extension(inputFile) << " to " << Utils::TypeDetector::extract_file_extension(outputFile) << "\n";
     exit(1);
 }

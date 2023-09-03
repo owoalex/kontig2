@@ -89,7 +89,7 @@ int main(int argc, char** argv) {
             kontig_mode = 8;
             continue;
         }
-        std::cout << "Unknown command " << arg << "\n\n";
+        std::cerr << "Unknown command " << arg << "\n\n";
         kontig_mode = 0;
         break;
     }

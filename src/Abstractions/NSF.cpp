@@ -26,19 +26,19 @@ Abstractions::NSF::NSF(char* filePath) {
     }
     
     if (createNew) {
-        this->fileStream->write(MAGIC_NUMBER, 4);
+        this->fileStream->write(MAGIC_NUMBER, 8);
     } else {
-        this->streamCount = getUInt64AtOffset(4);
+        this->streamCount = getUInt64AtOffset(8);
         this->streamIndexOffsets = (int*) malloc(this->streamCount * sizeof(int));
         this->streamEntryCounts = (int*) malloc(this->streamCount * sizeof(int));
         this->streamTypes = (uint8_t*) malloc(this->streamCount * sizeof(uint8_t));
         this->streamIndexSizes = (uint8_t*) malloc(this->streamCount * sizeof(uint8_t));
         
         for (int i = 0; i < this->streamCount; i++) {
-            this->streamIndexOffsets[i] = getUInt64AtOffset(HEADER_SIZE + (i * STREAM_HEADER_SIZE) + 0);
-            this->streamEntryCounts[i] = getUInt64AtOffset(HEADER_SIZE + (i * STREAM_HEADER_SIZE) + 8);
-            this->streamTypes[i] = getUInt8AtOffset(HEADER_SIZE + (i * STREAM_HEADER_SIZE) + 16);
-            this->streamIndexSizes[i] = getUInt8AtOffset(HEADER_SIZE + (i * STREAM_HEADER_SIZE) + 17);
+            this->streamIndexOffsets[i] = getUInt64AtOffset(ROOT_HEADER_SIZE + (i * STREAM_HEADER_SIZE) + 0);
+            this->streamEntryCounts[i] = getUInt64AtOffset(ROOT_HEADER_SIZE + (i * STREAM_HEADER_SIZE) + 8);
+            this->streamTypes[i] = getUInt8AtOffset(ROOT_HEADER_SIZE + (i * STREAM_HEADER_SIZE) + 16);
+            this->streamIndexSizes[i] = getUInt8AtOffset(ROOT_HEADER_SIZE + (i * STREAM_HEADER_SIZE) + 17);
         }
     }
 }
@@ -76,6 +76,15 @@ uint64_t Abstractions::NSF::dataLength(int streamId, int entryId) {
     return getUInt64AtOffset(this->streamIndexOffsets[streamId] + (entryId * this->streamIndexSizes[streamId]) + 8);
 }
 
+int Abstractions::NSF::getFirstStreamOfType(uint8_t type) {
+    for (int i = 0; i < this->streamCount; i++) {
+        if (this->streamTypes[i] == type) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 char* Abstractions::NSF::getData(int streamId, int entryId) {
     uint64_t offset = getUInt64AtOffset(this->streamIndexOffsets[streamId] + (entryId * this->streamIndexSizes[streamId]));
     uint64_t length = getUInt64AtOffset(this->streamIndexOffsets[streamId] + (entryId * this->streamIndexSizes[streamId]) + 8);
@@ -85,21 +94,84 @@ char* Abstractions::NSF::getData(int streamId, int entryId) {
     return buffer;
 }
 
+char Abstractions::NSF::nsfToFastaChar(unsigned char c) {
+    switch (c) {
+        case 0b10000000:
+            return 'A';
+        case 0b01000000:
+            return 'T';
+        case 0b01000001:
+            return 'U';
+        case 0b00100000:
+            return 'C';
+        case 0b00010000:
+            return 'G';
+        case 0b00000001:
+            return 'N';
+        case 0b10010000:
+            return 'R';
+        case 0b01100000:
+            return 'Y';
+        case 0b01010000:
+            return 'K';
+        case 0b10100000:
+            return 'M';
+        case 0b00110000:
+            return 'S';
+        case 0b11000000:
+            return 'W';
+        case 0b01110000:
+            return 'B';
+        case 0b11010000:
+            return 'D';
+        case 0b11100000:
+            return 'H';
+        case 0b10110000:
+            return 'V';
+        case 0b11100001:
+            return 'I';
+        default:
+            return '-';
+    }
+}
+
 void Abstractions::NSF::toFASTA(std::ofstream* outputStream) {
     if (outputStream->fail()) {
-        std::cout << "Couldn't write to output file" << "\n";
+        std::cerr << "Couldn't write to output file" << "\n";
         exit(1);
     }
     
+    int nucleotideStream = getFirstStreamOfType(NUCLEOTIDE_STREAM_IDENTIFIER);
+    int qualityStream = getFirstStreamOfType(QUALITY_STREAM_IDENTIFIER);
+    int tagStream = getFirstStreamOfType(TAG_STREAM_IDENTIFIER);
+    
+    if (nucleotideStream == -1) {
+        std::cerr << "NSF is missing nucleotide stream" << "\n";
+        exit(1);
+    }
+    
+    if (qualityStream == -1) {
+        std::cout << "NSF is missing quality stream, ignoring" << "\n";
+        //exit(1);
+    }
+    
+    if (tagStream == -1) {
+        std::cout << "NSF is missing tag stream, generating based on index" << "\n";
+    }
+    
     std::cout << (int) this->getStreamCount() << " streams to write\n";
-    std::cout << (int) this->getEntryCount(0) << " entries to write\n";
+    std::cout << (int) this->getEntryCount(nucleotideStream) << " entries to write\n";
     outputStream->seekp(0);
-    for (int i = 0; i < this->getEntryCount(0); i++) {
-        uint64_t lengthRemain = this->dataLength(0, i);
-        uint64_t offset = this->dataOffset(0, i);
+    for (int i = 0; i < this->getEntryCount(nucleotideStream); i++) {
+        uint64_t lengthRemain = this->dataLength(nucleotideStream, i);
+        uint64_t offset = this->dataOffset(nucleotideStream, i);
         //char* data = this->getData(0, i);
         //std::cout << "Read " << (int) lengthRemain << "\n";
-        *outputStream << ">R" << (int) i << "\n";
+        if (tagStream == -1) {
+            *outputStream << ">R" << (int) i << "\n";
+        } else {
+            *outputStream << ">R-TODO-" << (int) i << "\n";
+        }
         //const char* outputBlock
         //outputStream->write(outputBlock, currentOutputBlockPosition);
         int lineLength = 0;
@@ -116,62 +188,103 @@ void Abstractions::NSF::toFASTA(std::ofstream* outputStream) {
             this->fileStream->read(inputBuffer, lineLength);
             offset += lineLength;
             for (int i = 0; i < lineLength; i++) {
-                switch ((unsigned char) inputBuffer[i]) {
-                    case 0b10000000:
-                        *outputStream << 'A';
-                        break;
-                    case 0b01000000:
-                        *outputStream << 'T';
-                        break;
-                    case 0b01000001:
-                        *outputStream << 'U';
-                        break;
-                    case 0b00100000:
-                        *outputStream << 'C';
-                        break;
-                    case 0b00010000:
-                        *outputStream << 'G';
-                        break;
-                    case 0b00000001:
-                        *outputStream << 'N';
-                        break; 
-                    case 0b10010000:
-                        *outputStream << 'R';
-                        break;
-                    case 0b01100000:
-                        *outputStream << 'Y';
-                        break;
-                    case 0b01010000:
-                        *outputStream << 'K';
-                        break;
-                    case 0b10100000:
-                        *outputStream << 'M';
-                        break;
-                    case 0b00110000:
-                        *outputStream << 'S';
-                        break;
-                    case 0b11000000:
-                        *outputStream << 'W';
-                        break;
-                    case 0b01110000:
-                        *outputStream << 'B';
-                        break;
-                    case 0b11010000:
-                        *outputStream << 'D';
-                        break;
-                    case 0b11100000:
-                        *outputStream << 'H';
-                        break;
-                    case 0b10110000:
-                        *outputStream << 'V';
-                        break;
-                    case 0b11100001:
-                        *outputStream << 'I';
-                        break;
-                    default:
-                        *outputStream << '-';
-                        break;
+                *outputStream << nsfToFastaChar(inputBuffer[i]);
+            }
+            *outputStream << "\n";
+        }
+        free(inputBuffer);
+    }
+    
+}
+
+void Abstractions::NSF::toFASTQ(std::ofstream* outputStream) {
+    if (outputStream->fail()) {
+        std::cerr << "Couldn't write to output file" << "\n";
+        exit(1);
+    }
+    
+    int nucleotideStream = getFirstStreamOfType(NUCLEOTIDE_STREAM_IDENTIFIER);
+    int qualityStream = getFirstStreamOfType(QUALITY_STREAM_IDENTIFIER);
+    int tagStream = getFirstStreamOfType(TAG_STREAM_IDENTIFIER);
+    
+    if (nucleotideStream == -1) {
+        std::cerr << "NSF is missing nucleotide stream" << "\n";
+        exit(1);
+    }
+    
+    if (qualityStream == -1) {
+        std::cout << "NSF is missing quality stream" << "\n";
+        exit(1);
+    }
+    
+    if (tagStream == -1) {
+        std::cout << "NSF is missing tag stream, generating based on index" << "\n";
+    }
+    
+    std::cout << (int) this->getStreamCount() << " streams to write\n";
+    std::cout << (int) this->getEntryCount(nucleotideStream) << " entries to write\n";
+    outputStream->seekp(0);
+    for (int i = 0; i < this->getEntryCount(nucleotideStream); i++) {
+        uint64_t lengthRemain = this->dataLength(nucleotideStream, i);
+        uint64_t offset = this->dataOffset(nucleotideStream, i);
+        //char* data = this->getData(0, i);
+        //std::cout << "Read " << (int) lengthRemain << "\n";
+        if (tagStream == -1) {
+            *outputStream << "@R" << (int) i << "\n";
+        } else {
+            *outputStream << "@R-TODO-" << (int) i << "\n";
+        }
+        //const char* outputBlock
+        //outputStream->write(outputBlock, currentOutputBlockPosition);
+        int lineLength = 0;
+        char* inputBuffer = (char*) malloc(80);
+        while (lengthRemain > 0) {
+            if (lengthRemain > 80) {
+                lengthRemain -= 80;
+                lineLength = 80;
+            } else {
+                lineLength = lengthRemain;
+                lengthRemain = 0;
+            }
+            this->fileStream->seekp(offset);
+            this->fileStream->read(inputBuffer, lineLength);
+            offset += lineLength;
+            for (int i = 0; i < lineLength; i++) {
+                *outputStream << nsfToFastaChar(inputBuffer[i]);
+            }
+            *outputStream << "\n";
+        }
+        
+        // Now do quality data
+        
+        lengthRemain = this->dataLength(qualityStream, i);
+        offset = this->dataOffset(qualityStream, i);
+        //char* data = this->getData(0, i);
+        //std::cout << "Read " << (int) lengthRemain << "\n";
+        if (tagStream == -1) {
+            *outputStream << "+R" << (int) i << "\n";
+        } else {
+            *outputStream << "+R-TODO-" << (int) i << "\n";
+        }
+        //const char* outputBlock
+        //outputStream->write(outputBlock, currentOutputBlockPosition);
+        lineLength = 0;
+        while (lengthRemain > 0) {
+            if (lengthRemain > 80) {
+                lengthRemain -= 80;
+                lineLength = 80;
+            } else {
+                lineLength = lengthRemain;
+                lengthRemain = 0;
+            }
+            this->fileStream->seekp(offset);
+            this->fileStream->read(inputBuffer, lineLength);
+            offset += lineLength;
+            for (int i = 0; i < lineLength; i++) {
+                if (inputBuffer[i] > 93) {
+                    inputBuffer[i] = 93; // We're limited to the FASTQ spec, this is the max Phred score storable
                 }
+                *outputStream << (char) (inputBuffer[i] + 33); // Shift into ASCII range
             }
             *outputStream << "\n";
         }
