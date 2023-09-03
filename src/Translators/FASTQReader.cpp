@@ -172,7 +172,7 @@ void Translators::FASTQReader::toNSF(std::ofstream* outputStream) {
         }
         outputStream->write(reinterpret_cast<const char *>(&value), sizeof(value));
         outputStream->seekp(streamIndexOffset + (i * Abstractions::NSF::NUCLEOTIDE_INDEX_ENTRY_SIZE) + 8);
-        uint64_t dataSize = scaffoldGenomicDataNucleotides[i];
+        uint64_t dataSize = leftToWrite;
         value = dataSize;
         if constexpr(std::endian::native != std::endian::little) {
             value = std::byteswap(value);
@@ -383,7 +383,7 @@ void Translators::FASTQReader::toNSF(std::ofstream* outputStream) {
         }
         outputStream->write(reinterpret_cast<const char *>(&value), sizeof(value));
         outputStream->seekp(streamIndexOffset + (i * Abstractions::NSF::QUALITY_INDEX_ENTRY_SIZE) + 8);
-        uint64_t dataSize = scaffoldGenomicDataNucleotides[i];
+        uint64_t dataSize = leftToWrite;
         value = dataSize;
         if constexpr(std::endian::native != std::endian::little) {
             value = std::byteswap(value);
@@ -442,11 +442,117 @@ void Translators::FASTQReader::toNSF(std::ofstream* outputStream) {
         //}
     }
     
+    
+    // Finally, write tag data
+    
+    // INFORMATION ABOUT THIRD STREAM (64 bytes)
+    streamIndexOffset += (scaffoldOffsets.size() * Abstractions::NSF::QUALITY_INDEX_ENTRY_SIZE);
+    // move the pointer to the next stream start
+    outputStream->seekp(Abstractions::NSF::ROOT_HEADER_SIZE + (2 * Abstractions::NSF::STREAM_HEADER_SIZE) + 0);
+    value = streamIndexOffset;
+    if constexpr(std::endian::native != std::endian::little) {
+        value = std::byteswap(value);
+    }
+    outputStream->write(reinterpret_cast<const char*>(&value), sizeof(value));
+    // Write where the stream index starts
+    
+    outputStream->seekp(Abstractions::NSF::ROOT_HEADER_SIZE + (2 * Abstractions::NSF::STREAM_HEADER_SIZE) + 8);
+    value = entryCount;
+    if constexpr(std::endian::native != std::endian::little) {
+        value = std::byteswap(value);
+    }
+    outputStream->write(reinterpret_cast<const char*>(&value), sizeof(value));
+    // How long is the stream index (how many indicies)
+    
+    smallValue = Abstractions::NSF::TAG_STREAM_IDENTIFIER;
+    outputStream->seekp(Abstractions::NSF::ROOT_HEADER_SIZE + (2 * Abstractions::NSF::STREAM_HEADER_SIZE) + 16);
+    outputStream->write(reinterpret_cast<const char*>(&smallValue), sizeof(smallValue));
+    
+    smallValue = Abstractions::NSF::TAG_INDEX_ENTRY_SIZE;
+    outputStream->seekp(Abstractions::NSF::ROOT_HEADER_SIZE + (2 * Abstractions::NSF::STREAM_HEADER_SIZE) + 17);
+    outputStream->write(reinterpret_cast<const char*>(&smallValue), sizeof(smallValue));
+    // How big is each index in bytes
+    // INFORMATION ABOUT THIRD STREAM
+    
+    // Reset stream tail and offset
+    streamOffset = streamTail;
+    streamTail = streamOffset;
+    
+    for (std::vector<uint64_t>::size_type i = 0; i < scaffoldOffsets.size(); i++) {
+        int leftToRead = scaffoldGenomicDataOffsets[i] - scaffoldNameOffsets[i] - 1;
+        //std::cout << leftToRead << " TAG LENGTH\n";
+        int leftToWrite = leftToRead;
+        
+        // WRITE INDEX ENTRY FOR READ
+        outputStream->seekp(streamIndexOffset + (i * Abstractions::NSF::TAG_INDEX_ENTRY_SIZE) + 0);
+        uint64_t dataPosition = streamTail;
+        value = dataPosition;
+        if constexpr(std::endian::native != std::endian::little) {
+            value = std::byteswap(value);
+        }
+        outputStream->write(reinterpret_cast<const char *>(&value), sizeof(value));
+        outputStream->seekp(streamIndexOffset + (i * Abstractions::NSF::TAG_INDEX_ENTRY_SIZE) + 8);
+        uint64_t dataSize = leftToWrite;
+        value = dataSize;
+        if constexpr(std::endian::native != std::endian::little) {
+            value = std::byteswap(value);
+        }
+        outputStream->write(reinterpret_cast<const char *>(&value), sizeof(value));
+        // WRITE INDEX ENTRY FOR READ
+        
+        this->inputStream->seekg(scaffoldNameOffsets[i]);
+        
+        //t = scaffoldGenomicDataOffsets[i];
+        //std::string str = std::to_string(t);
+        //const char* cstr = str.c_str();
+        //std::cout << "Starting from " << cstr << "\n";
+        
+        //t = scaffoldGenomicDataLengths[i];
+        //str = std::to_string(t);
+        //cstr = str.c_str();
+        //std::cout << "Length " << cstr << "\n";
+        
+        while (leftToRead > 0) {
+            int inputBlockSize = leftToRead;
+            if (inputBlockSize > 1024) {
+                inputBlockSize = 1024;
+            }
+
+            this->inputStream->read(inputBuffer, inputBlockSize);
+            inputBlockSize = this->inputStream->gcount();
+            
+            int currentOutputBlockPosition = 0;
+            for (int j = 0; j < inputBlockSize; j++) {
+                outputBlock[currentOutputBlockPosition] = inputBuffer[j];
+                currentOutputBlockPosition++;
+            }
+            
+            leftToWrite -= currentOutputBlockPosition;
+            if (currentOutputBlockPosition < 1024) {
+                outputBlock[currentOutputBlockPosition] = '\0';
+            }
+            const char* outputBlockFinal = outputBlock;
+            
+            //std::string str = std::to_string(i+1);
+            //const char* cstr = str.c_str();
+            //std::cout << "Block # " << cstr << "\n";
+            //std::cout << "BLOCK:[\n" << outputBlockFinal << "\n]\n";
+            outputStream->seekp(streamTail);
+            outputStream->write(outputBlockFinal, currentOutputBlockPosition);
+            
+            streamTail += currentOutputBlockPosition;
+            leftToRead -= inputBlockSize;
+        }
+    }
+    
     int tagStreamOffset = streamTail;
     int tagStreamTail = tagStreamOffset;
     
     free(inputBuffer);
     free(outputBlock);
+    
+    //*outputStream << "";
+    outputStream->flush();
     
     std::cout << scaffoldOffsets.size() << " scaffolds converted\n";
 }
