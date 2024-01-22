@@ -128,6 +128,17 @@ Translators::CLI::CLI(int argc, char** argv) {
                     exit(0);
                     break;
                 }
+                case Utils::FileType::FASTA: {
+                    Translators::FASTQReader* ifr = new Translators::FASTQReader(inputStream);
+                    char* tmpFilepath = outputFile;
+                    std::strcat(tmpFilepath, ".tmp.nsf");
+                    std::ofstream* tmp = new std::ofstream(tmpFilepath, std::ios_base::binary);
+                    ifr->toNSF(tmp);
+                    Abstractions::NSF* nsf = new Abstractions::NSF(tmpFilepath);
+                    nsf->toFASTA(outputStream);
+                    exit(0);
+                    break;
+                }
                 default:
                     break;
             }

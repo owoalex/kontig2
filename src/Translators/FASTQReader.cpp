@@ -113,7 +113,7 @@ void Translators::FASTQReader::toNSF(std::ofstream* outputStream) {
     
     char* outputBlock = (char*) malloc(sizeof(char) * 1024);
     
-    const uint64_t STREAM_COUNT = 3;
+    const uint64_t STREAM_COUNT = 16; // 16 is a good placeholder for most bioinformatics workflows
     uint64_t entryCount = scaffoldOffsets.size();
     const uint64_t INDEX_ENTRY_SIZE_ALL_STREAMS = Abstractions::NSF::NUCLEOTIDE_INDEX_ENTRY_SIZE + Abstractions::NSF::QUALITY_INDEX_ENTRY_SIZE + Abstractions::NSF::TAG_INDEX_ENTRY_SIZE;
     uint64_t streamOffset = Abstractions::NSF::ROOT_HEADER_SIZE + (Abstractions::NSF::STREAM_HEADER_SIZE * STREAM_COUNT) + (scaffoldOffsets.size() * INDEX_ENTRY_SIZE_ALL_STREAMS);
@@ -133,7 +133,7 @@ void Translators::FASTQReader::toNSF(std::ofstream* outputStream) {
     
     // INFORMATION ABOUT FIRST STREAM (64 bytes)
     int streamIndexOffset = Abstractions::NSF::ROOT_HEADER_SIZE + (Abstractions::NSF::STREAM_HEADER_SIZE * STREAM_COUNT);
-    outputStream->seekp(Abstractions::NSF::ROOT_HEADER_SIZE + (0 * Abstractions::NSF::STREAM_HEADER_SIZE) + 0);
+    outputStream->seekp(Abstractions::NSF::ROOT_HEADER_SIZE + (0 * Abstractions::NSF::STREAM_HEADER_SIZE) + 32);
     uint64_t value = streamIndexOffset;
     if constexpr(std::endian::native != std::endian::little) {
         value = std::byteswap(value);
@@ -141,7 +141,7 @@ void Translators::FASTQReader::toNSF(std::ofstream* outputStream) {
     outputStream->write(reinterpret_cast<const char*>(&value), sizeof(value));
     // Write where the stream index starts
     
-    outputStream->seekp(Abstractions::NSF::ROOT_HEADER_SIZE + (0 * Abstractions::NSF::STREAM_HEADER_SIZE) + 8);
+    outputStream->seekp(Abstractions::NSF::ROOT_HEADER_SIZE + (0 * Abstractions::NSF::STREAM_HEADER_SIZE) + 40);
     value = entryCount;
     if constexpr(std::endian::native != std::endian::little) {
         value = std::byteswap(value);
@@ -340,7 +340,7 @@ void Translators::FASTQReader::toNSF(std::ofstream* outputStream) {
     // INFORMATION ABOUT SECOND STREAM (64 bytes)
     streamIndexOffset += (scaffoldOffsets.size() * Abstractions::NSF::NUCLEOTIDE_INDEX_ENTRY_SIZE);
     // move the pointer to the next stream start
-    outputStream->seekp(Abstractions::NSF::ROOT_HEADER_SIZE + (1 * Abstractions::NSF::STREAM_HEADER_SIZE) + 0);
+    outputStream->seekp(Abstractions::NSF::ROOT_HEADER_SIZE + (1 * Abstractions::NSF::STREAM_HEADER_SIZE) + 32);
     value = streamIndexOffset;
     if constexpr(std::endian::native != std::endian::little) {
         value = std::byteswap(value);
@@ -348,7 +348,7 @@ void Translators::FASTQReader::toNSF(std::ofstream* outputStream) {
     outputStream->write(reinterpret_cast<const char*>(&value), sizeof(value));
     // Write where the stream index starts
     
-    outputStream->seekp(Abstractions::NSF::ROOT_HEADER_SIZE + (1 * Abstractions::NSF::STREAM_HEADER_SIZE) + 8);
+    outputStream->seekp(Abstractions::NSF::ROOT_HEADER_SIZE + (1 * Abstractions::NSF::STREAM_HEADER_SIZE) + 40);
     value = entryCount;
     if constexpr(std::endian::native != std::endian::little) {
         value = std::byteswap(value);
@@ -448,7 +448,7 @@ void Translators::FASTQReader::toNSF(std::ofstream* outputStream) {
     // INFORMATION ABOUT THIRD STREAM (64 bytes)
     streamIndexOffset += (scaffoldOffsets.size() * Abstractions::NSF::QUALITY_INDEX_ENTRY_SIZE);
     // move the pointer to the next stream start
-    outputStream->seekp(Abstractions::NSF::ROOT_HEADER_SIZE + (2 * Abstractions::NSF::STREAM_HEADER_SIZE) + 0);
+    outputStream->seekp(Abstractions::NSF::ROOT_HEADER_SIZE + (2 * Abstractions::NSF::STREAM_HEADER_SIZE) + 32);
     value = streamIndexOffset;
     if constexpr(std::endian::native != std::endian::little) {
         value = std::byteswap(value);
@@ -456,7 +456,7 @@ void Translators::FASTQReader::toNSF(std::ofstream* outputStream) {
     outputStream->write(reinterpret_cast<const char*>(&value), sizeof(value));
     // Write where the stream index starts
     
-    outputStream->seekp(Abstractions::NSF::ROOT_HEADER_SIZE + (2 * Abstractions::NSF::STREAM_HEADER_SIZE) + 8);
+    outputStream->seekp(Abstractions::NSF::ROOT_HEADER_SIZE + (2 * Abstractions::NSF::STREAM_HEADER_SIZE) + 40);
     value = entryCount;
     if constexpr(std::endian::native != std::endian::little) {
         value = std::byteswap(value);

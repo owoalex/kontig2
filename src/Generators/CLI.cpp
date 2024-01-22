@@ -4,28 +4,29 @@
 #include <stdio.h>
 #include "CLI.h"
 #include "../Utils/TypeDetector.h"
+#include "KLTBuilder.h"
 #include <iostream>
 
 Generators::CLI::CLI(int argc, char** argv) {
     char* inputFile = NULL;
-    char* outputFile = NULL;
     bool helpNeeded = false;
+    
+    uint8_t generateMode = 0;
     
     for (int i = 2; i < argc; ++i) {
         char* arg = argv[i];
-        if (strcmp(arg,"--input") == 0 || strcmp(arg,"-i") == 0) {
+        if (strcmp(arg,"--nsf") == 0 || strcmp(arg,"-i") == 0) {
             i++;
             if (i < argc) {
                 inputFile = argv[i];
             }
             continue;
         }
-        if (strcmp(arg,"--output") == 0 || strcmp(arg,"-o") == 0) {
-            i++;
-            if (i < argc) {
-                outputFile = argv[i];
+        if (generateMode == 0) {
+            if (strcmp(arg,"kmers") == 0) {
+                generateMode = 1;
+                continue;
             }
-            continue;
         }
         if (strcmp(arg,"-h") == 0 || strcmp(arg,"--help") == 0) {
             helpNeeded = true;
@@ -37,51 +38,34 @@ Generators::CLI::CLI(int argc, char** argv) {
     }
     
     if (inputFile == NULL) {
-        std::cout << "Missing input file, please specify one with -i <file_path>\n";
+        std::cout << "Missing nsf file, please specify one with --nsf <file_path>\n";
         helpNeeded = true;
     }
     
-    if (outputFile == NULL) {
-        std::cout << "Missing output file, please specify one with -o <file_path>\n";
+    if (generateMode == 0) {
+        std::cout << "Missing generation type, please select a valid generator type\n";
         helpNeeded = true;
     }
     
     if (helpNeeded) {
-        std::cout << "Usage: kontig convert -i <input_file> -o <output_file> [options and flags]\n";
+        std::cout << "Usage: kontig generate <type> --nsf <nsf_file> [options and flags]\n";
         std::cout << "\n";
-        std::cout << "Options and flags\n";
-        std::cout << "  -i, --input\n";
-        std::cout << "  Specify an input file\n";
-        std::cout << "  -o, --output\n";
-        std::cout << "  Specify an output file\n";
+        std::cout << "Global options and flags\n";
+        std::cout << "  -i, --nsf\n";
+        std::cout << "  Specify a nucleotide scratch file\n";
         std::cout << "\n";
-        std::cout << "Full documentation <https://kontig.alexbaldwin.dev/docs/convert>\n";
+        std::cout << "Generator types\n";
+        std::cout << "  kmers\n";
+        std::cout << "  Generates k-mer lookup table\n";
+        std::cout << "\n";
+        std::cout << "Full documentation <https://kontig.alexbaldwin.dev/docs/generate>\n";
         exit(0);
     }
     
     Utils::FileType inputFileType = Utils::TypeDetector::file_extension_to_filetype(Utils::TypeDetector::extract_file_extension(inputFile));
-    Utils::FileType outputFileType = Utils::TypeDetector::file_extension_to_filetype(Utils::TypeDetector::extract_file_extension(outputFile));
     
 
     //std::cout << inputFile << " --> " << outputFile << "\n";
-    
-    switch (outputFileType) {
-        case Utils::FileType::Unknown:
-            std::cout << "Couldn't determine the file type of " << outputFile << "\n";
-            exit(1);
-            break;
-        case Utils::FileType::GZ:
-            std::cout << "Kontig does not natively support gzipped files\n";
-            exit(1);
-            break;
-        default:
-            break;
-    }
-    
-    if (outputFileType == inputFileType) {
-        std::cout << "Query doesn't make sense: Desired output format appears to match the input format\n";
-        exit(1);
-    }
     
     switch (inputFileType) {
         case Utils::FileType::Unknown:
@@ -92,11 +76,21 @@ Generators::CLI::CLI(int argc, char** argv) {
             std::cout << "Kontig does not natively support gzipped files\n";
             exit(1);
             break;
-        case Utils::FileType::FASTA:
-            std::cout << "FASTA --> NSF\n";
+        default:
+            break;
+    }
+    
+    switch (generateMode) {
+        case 1: {
+            Abstractions::NSF* nsf = new Abstractions::NSF(inputFile);
+            KLTBuilder* builder = new KLTBuilder();
+            builder->generate(nsf);
             exit(0);
             break;
+        }
         default:
+            std::cout << "Unimplemented generation mode\n";
+            exit(1);
             break;
     }
 }

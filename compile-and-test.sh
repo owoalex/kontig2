@@ -21,8 +21,8 @@ if make; then
         echo "FAILED TEST"
         exit
     fi
-    echo ">build/kontig generate kmers -i test-output/input.nsf -o test-output/table0.klt"
-    if build/kontig generate kmers -i test-output/input.nsf -o test-output/table0.klt; then
+    echo ">build/kontig generate kmers -i test-output/input.nsf"
+    if build/kontig generate kmers -i test-output/input.nsf; then
         echo "SUCCESS"
     else
         echo ""

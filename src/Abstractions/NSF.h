@@ -31,9 +31,16 @@ namespace Abstractions {
         static const uint8_t QUALITY_INDEX_ENTRY_SIZE = 32;
         static const uint8_t TAG_INDEX_ENTRY_SIZE = 32;
         
+        //static const uint8_t _STREAM_IDENTIFIER = ;
+        static const uint8_t EMPTY_STREAM_IDENTIFIER = 0;
+        static const uint8_t FRAGMENT_RECORD_STREAM_IDENTIFIER = 255;
+        
         static const uint8_t NUCLEOTIDE_STREAM_IDENTIFIER = 8;
         static const uint8_t QUALITY_STREAM_IDENTIFIER = 7;
         static const uint8_t TAG_STREAM_IDENTIFIER = 6;
+        
+        static const uint8_t KMER_TREE_LL_STREAM_IDENTIFIER = 32;
+        static const uint8_t KMER_TREE_ARR_STREAM_IDENTIFIER = 33;
         
         NSF(char* filePath);
         uint64_t getEntryCount(int streamId);
@@ -43,6 +50,7 @@ namespace Abstractions {
         uint64_t dataOffset(int streamId, int entryId);
         char* getData(int streamId, int entryId);
         uint8_t getStreamCount();
+        uint8_t getStreamType(int streamId);
         void toFASTA(std::ofstream* outputStream);
         void toFASTQ(std::ofstream* outputStream);
     };

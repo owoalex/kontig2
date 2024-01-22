@@ -35,8 +35,8 @@ Abstractions::NSF::NSF(char* filePath) {
         this->streamIndexSizes = (uint8_t*) malloc(this->streamCount * sizeof(uint8_t));
         
         for (int i = 0; i < this->streamCount; i++) {
-            this->streamIndexOffsets[i] = getUInt64AtOffset(ROOT_HEADER_SIZE + (i * STREAM_HEADER_SIZE) + 0);
-            this->streamEntryCounts[i] = getUInt64AtOffset(ROOT_HEADER_SIZE + (i * STREAM_HEADER_SIZE) + 8);
+            this->streamIndexOffsets[i] = getUInt64AtOffset(ROOT_HEADER_SIZE + (i * STREAM_HEADER_SIZE) + 32);
+            this->streamEntryCounts[i] = getUInt64AtOffset(ROOT_HEADER_SIZE + (i * STREAM_HEADER_SIZE) + 40);
             this->streamTypes[i] = getUInt8AtOffset(ROOT_HEADER_SIZE + (i * STREAM_HEADER_SIZE) + 16);
             this->streamIndexSizes[i] = getUInt8AtOffset(ROOT_HEADER_SIZE + (i * STREAM_HEADER_SIZE) + 17);
         }
@@ -66,6 +66,10 @@ uint8_t Abstractions::NSF::getStreamCount() {
 
 uint64_t Abstractions::NSF::getEntryCount(int streamId) {
     return this->streamEntryCounts[streamId];
+}
+
+uint8_t Abstractions::NSF::getStreamType(int streamId) {
+    return this->streamTypes[streamId];
 }
 
 uint64_t Abstractions::NSF::dataOffset(int streamId, int entryId) {
@@ -150,17 +154,10 @@ void Abstractions::NSF::toFASTA(std::ofstream* outputStream) {
         exit(1);
     }
     
-    if (qualityStream == -1) {
-        std::cout << "NSF is missing quality stream, ignoring" << "\n";
-        //exit(1);
-    }
-    
     if (tagStream == -1) {
         std::cout << "NSF is missing tag stream, generating based on index" << "\n";
     }
-    
-    std::cout << (int) this->getStreamCount() << " streams to write\n";
-    std::cout << (int) this->getEntryCount(nucleotideStream) << " entries to write\n";
+
     outputStream->seekp(0);
     char* inputBuffer = (char*) malloc(80);
     char* tagInputBuffer;
@@ -203,6 +200,9 @@ void Abstractions::NSF::toFASTA(std::ofstream* outputStream) {
     }
     free(inputBuffer);
     outputStream->flush();
+    
+    
+    std::cout << (int) this->getEntryCount(nucleotideStream) << " scaffolds converted\n";
 }
 
 void Abstractions::NSF::toFASTQ(std::ofstream* outputStream) {
@@ -229,8 +229,8 @@ void Abstractions::NSF::toFASTQ(std::ofstream* outputStream) {
         std::cout << "NSF is missing tag stream, generating based on index" << "\n";
     }
     
-    std::cout << (int) this->getStreamCount() << " streams to write\n";
-    std::cout << (int) this->getEntryCount(nucleotideStream) << " entries to write\n";
+    //std::cout << (int) this->getStreamCount() << " streams to write\n";
+    //std::cout << (int) this->getEntryCount(nucleotideStream) << " entries to write\n";
     outputStream->seekp(0);
     char* inputBuffer = (char*) malloc(80);
     char* tagInputBuffer;
@@ -306,4 +306,6 @@ void Abstractions::NSF::toFASTQ(std::ofstream* outputStream) {
     }
     free(inputBuffer);
     outputStream->flush();
+    
+    std::cout << (int) this->getEntryCount(nucleotideStream) << " scaffolds converted\n";
 }

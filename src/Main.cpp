@@ -23,6 +23,8 @@ You should have received a copy of the GNU General Public License along with Kon
 #include <stdio.h>
 
 #include "Translators/CLI.h"
+#include "Generators/CLI.h"
+#include "Stats/CLI.h"
 
 int main(int argc, char** argv) {
     uint8_t kontig_mode = 0;
@@ -89,6 +91,18 @@ int main(int argc, char** argv) {
             kontig_mode = 8;
             continue;
         }
+        if (strcmp(arg,"stat") == 0) {
+            kontig_mode = 16;
+            continue;
+        }
+        if (strcmp(arg,"stats") == 0) {
+            kontig_mode = 16;
+            continue;
+        }
+        if (strcmp(arg,"statistics") == 0) {
+            kontig_mode = 16;
+            continue;
+        }
         std::cerr << "Unknown command " << arg << "\n\n";
         kontig_mode = 0;
         break;
@@ -99,7 +113,7 @@ int main(int argc, char** argv) {
             new Translators::CLI(argc, argv);
             break;
         case 2:
-            std::cout << "Generate [TODO]\n";
+            new Generators::CLI(argc, argv);
             break;
         case 3:
             std::cout << "Assemble [TODO]\n";
@@ -116,6 +130,9 @@ int main(int argc, char** argv) {
         case 8:
             std::cout << "Controller [TODO]\n";
             break;
+        case 16:
+            new Stats::CLI(argc, argv);
+            break;
         default:
             std::cout << "Usage: kontig <mode> [options and flags]\n";
             std::cout << "Hybrid DNA read assembler v0.0\n";
@@ -124,8 +141,10 @@ int main(int argc, char** argv) {
             std::cout << "  kontig <mode> --help\n";
             std::cout << "\n";
             std::cout << "Avaliable modes\n";
-            std::cout << "  convert\n";
+            std::cout << "  convert/trans/translate\n";
             std::cout << "  Converts different file types into ones understood by kontig (and other tools) natively\n";
+            std::cout << "  stats/statistics\n";
+            std::cout << "  Shows relevant statistics for a given input file\n";
             std::cout << "\n";
             std::cout << "Full documentation <https://kontig.alexbaldwin.dev/docs>\n";
             exit(0);
