@@ -1,7 +1,6 @@
  
 # NSF Root Header
 
-|-----------|-------------------|-----------------------|
 | Position  | Purpose           | Value                 |
 |-----------|-------------------|-----------------------|
 | 0-3       | Magic number      | 0x6e73662f            |
@@ -10,24 +9,20 @@
 | 6         | Bitwise flags A   | see table             |
 | 7         | RESERVED          | undefined             |
 | 8-15      | Stream count      | uint64_t (LE)         |
-|-----------|-------------------|-----------------------|
 
 "Stream count" includes all streams, even empty streams.
 
 ## Bitwise flags (A)
 
-|-----------|-------------------|
 | Position  | Purpose           |
 |-----------|-------------------|
 | 0         | Dirty marker      |
 | 1-7       | RESERVED          |
-|-----------|-------------------|
 
 The "Dirty" bit highlights that a file is broken in some fundamental way. An NSF file in this state must be rebuilt. Dirty NSF files should be considered "read only" as they will only become more broken with further writes to streams.
 
 # NSF Stream Header
 
-|-----------|-----------------------------------|-----------------------|
 | Position  | Purpose                           | Value                 |
 |-----------|-----------------------------------|-----------------------|
 | 0-7       | Total stream length (in bytes)    | uint64_t (LE)         |
@@ -36,7 +31,6 @@ The "Dirty" bit highlights that a file is broken in some fundamental way. An NSF
 | 17        | Index entry size                  | uint8_t               |
 | 32-39     | Stream index position (in bytes)  | uint64_t (LE)         |
 | 40-47     | Index count                       | unit64_t (LE)         |
-|-----------|-----------------------------------|-----------------------|
 
 "Index count" refers to how many entries of size "Index entry size" are present. Note: this value MUST include deleted indexes 
 "Stream data position" refers to where the actual data (excluding index) starts.
@@ -44,26 +38,24 @@ The "Dirty" bit highlights that a file is broken in some fundamental way. An NSF
 Note: Sometimes implementations of NSFs will intentionally leave gaps within various data structures in order to facilitate the efficient implementation of mutable arrays.
 
 
-TODO: Clarify "Index Count Means"
-|-----------|---------------------------------------|-------------------------------|
-| Type #    | Description                           | Index Count Means             |
-|-----------|---------------------------------------|-------------------------------|
-| 0         | Empty stream                          | undefined                     |
-| 6         | String data (tags)                    | Number of strings             |
-| 7         | Raw quality data (Phred:uint8_t)      | Number of reads               |
-| 8         | Raw nucelotide data (bitwise ACTG)    | Number of reads               |
-| 32        | K-mer data (tree of linked lists)     | Total tree size (in bytes)    |
-| 33        | K-mer data (tree of arrays)           | Total tree size (in bytes)    |
-| 64        | Polymorphisms                         | Number of contigs             |
-| 65        | Matt information                      | Number of matts               |
-| 255       | Fragment record                       | Number of fragments           |
-|-----------|---------------------------------------|-------------------------------|
+
+| Type #    | Description                           |
+|-----------|---------------------------------------|
+| 0         | Empty stream                          |
+| 6         | String data (tags)                    |
+| 7         | Raw quality data (Phred:uint8_t)      |
+| 8         | Raw nucelotide data (bitwise ACTG)    |
+| 32        | K-mer data (tree of linked lists)     |
+| 33        | K-mer data (tree of arrays)           |
+| 64        | Polymorphisms                         |
+| 65        | Matt information                      |
+| 255       | Fragment record                       |
+
 
 When an NSF file is edited, gaps may be left when deleting or resizing streams. This can leave the file in a "sparse" state. When this occurs, a fragment record should be added as a stream. The fragment record should denote all unallocated space unusued in the heap of the NSF file. There should only ever be one fragment record per NSF file. This fragment record may be referred to by some streams to attempt to slot in data wherever possible. When a fragment stream becomes empty, the fragment stream may be removed entirely.
 
 # NSF Stream Entry Index
 
-|-----------|-----------------------------------|-----------------------|
 | Position  | Purpose                           | Value                 |
 |-----------|-----------------------------------|-----------------------|
 | 0-7       | Data position (in bytes)          | uint64_t (LE)         |
@@ -72,7 +64,6 @@ When an NSF file is edited, gaps may be left when deleting or resizing streams. 
 | 17-23     | RESERVED                          | undefined             |
 | 24-31     | Reserved space (in bytes)         | uint64_t (LE)         |
 | >=32      | Stream type specific              | unit64_t (LE)         |
-|-----------|-----------------------------------|-----------------------|
 
 NSF stream indexes have certain properties which are fixed, i.e. not specific to specific stream types. These fields are required to facilitate defragmentation. In order to preserve the ability for higher order functions to restructure the file without significant work, any embedded references to other data entries MUST refer to index indicies, and not use absolute file offsets.
 
@@ -80,11 +71,9 @@ Reserved space indicates how much free space after the data position and size ha
 
 ## Bitwise flags (B)
 
-|-----------|-------------------|
 | Position  | Purpose           |
 |-----------|-------------------|
 | 0         | Not Deleted       |
 | 1-7       | RESERVED          |
-|-----------|-------------------|
 
 Deleted entries *may* be entirely zero, to enable gzip to compress them more effectively. As soon as the bitwise flag "Not deleted" is *not* present the rest of the data structure will be ignored. The underlying storage will *not* be preserved by the defragmenter.
