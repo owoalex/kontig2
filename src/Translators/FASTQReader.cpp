@@ -414,6 +414,8 @@ void Translators::FASTQReader::toNSF(std::ofstream* outputStream) {
             
             int currentOutputBlockPosition = 0;
             for (int j = 0; j < inputBlockSize; j++) {
+                // Filter for printable ASCII, then convert encoded phred score into uint8
+                // FASTQ stores phred scores by moving uint8's into the printable ASCII range
                 if ((inputBuffer[j] >= 33) && (inputBuffer[j] <= 126)) {
                     outputBlock[currentOutputBlockPosition] = inputBuffer[j] - 33;
                     currentOutputBlockPosition++;
